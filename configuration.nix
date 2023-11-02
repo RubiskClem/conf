@@ -1,8 +1,8 @@
 # Edit this configuration file to define what should be installed on
 # your system.  Help is available in the configuration.nix(5) man page
-# and in the NixOS manual (accessible by running ‘nixos-help’).
+# and in the NixOS manual (accessible by running `nixos-help`).
 
-{ config, pkgs, callPackage, ... }:
+{ config, pkgs, ... }:
 
 {
   imports =
@@ -10,98 +10,106 @@
       ./hardware-configuration.nix
     ];
 
-  # Bootloader.
-  boot.loader = {
-	systemd-boot.enable = true;
-	efi = {
-		canTouchEfiVariables = true;
-		efiSysMountPoint = "/boot";
-	};
-	grub = {
-		efiSupport = true;
-		device = "nodev";
-	};
-  };
+  # Use the systemd-boot EFI boot loader.
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
 
-  # Setup keyfile
-  boot.initrd.secrets = {
-    "/crypto_keyfile.bin" = null;
-  };
-
-  networking.hostName = "nixos"; # Define your hostname.
+  networking.hostName = "rubisk"; # Define your hostname.
+  # Pick only one of the below networking options.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
+
+  # Set your time zone.
+  time.timeZone = "Europe/Paris";
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
-  # Enable networking
-  networking.networkmanager.enable = true;
-
-  # Set your time zone.
-  time.timeZone = "Europe/Paris";
-
   # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
+  # console = {
+  #   font = "Lat2-Terminus16";
+  #   keyMap = "us";
+  #   useXkbConfig = true; # use xkbOptions in tty.
+  # };
 
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "fr_FR.UTF-8";
-    LC_IDENTIFICATION = "fr_FR.UTF-8";
-    LC_MEASUREMENT = "fr_FR.UTF-8";
-    LC_MONETARY = "fr_FR.UTF-8";
-    LC_NAME = "fr_FR.UTF-8";
-    LC_NUMERIC = "fr_FR.UTF-8";
-    LC_PAPER = "fr_FR.UTF-8";
-    LC_TELEPHONE = "fr_FR.UTF-8";
-    LC_TIME = "fr_FR.UTF-8";
+  # Enable the X11 windowing system.
+  services.xserver = {
+    enable = true;
+
+    desktopManager = {
+      xterm.enable = false;
+    };
+   
+    displayManager = {
+        defaultSession = "none+i3";
+    };
+
+    windowManager.i3 = {
+      enable = true;
+      extraPackages = with pkgs; [
+        dmenu #application launcher most people use
+        i3status # gives you the default i3 status bar
+        i3lock #default i3 screen locker
+        i3blocks #if you are planning on using i3blocks over i3status
+     ];
+    };
   };
 
-  environment.pathsToLink = ["/libexec"];
   # Configure keymap in X11
   services.xserver = {
     layout = "us";
     xkbVariant = "";
-    enable = true;
- 
-    desktopManager = {
-	xterm.enable = false;
-    };
-
-    displayManager = {
-	defaultSession = "none+i3";
-    };
-
-    windowManager.i3 = {
-	enable = true;
-	extraPackages = with pkgs; [
-		dmenu
-		i3status
-		i3lock
-		i3blocks
-	];
-    };
   };
+  # services.xserver.xkbOptions = "eurosign:e,caps:escape";
+
+  # Enable CUPS to print documents.
+  services.printing.enable = true;
+  services.blueman.enable = true;
+
+  # Enable sound.
+  sound.enable = true;
+  hardware.pulseaudio.enable = true;
+  hardware.bluetooth.enable = true; # enables support for Bluetooth
+  hardware.bluetooth.powerOnBoot = true; # powers up the default Bluetooth controller on boot
+
+  # Enable touchpad support (enabled default in most desktopManager).
+  # services.xserver.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.rubisk = {
-    isNormalUser = true;
-    description = "Rubisk";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [];
+     isNormalUser = true;
+     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+     packages = with pkgs; [
+       firefox
+       tree
+    ];
   };
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
+  virtualisation.libvirtd.enable = true;
+  programs.dconf.enable = true; # virt-manager requires dconf to remember settings
+
   # List packages installed in system profile. To search, run:
   # $ nix search wget
+  environment.pathsToLink = [ "/libexec" ]; # links /libexec from derivations to /run/current-system/sw 
   environment.systemPackages = with pkgs; [
-	vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-	firefox 	
-	discord
-	neovim
-	gimp
-	#  wget
+    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    git
+    discord
+    wget
+    gcc12
+    alacritty
+    clang
+    gimp
+    virt-manager
+    gdb
+    docker
+    python3
+    pkgs.hdparm
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -123,12 +131,17 @@
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
 
+  # Copy the NixOS configuration file and link it from the resulting system
+  # (/run/current-system/configuration.nix). This is useful in case you
+  # accidentally delete configuration.nix.
+  # system.copySystemConfiguration = true;
+
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
-  # on your system were taken. It‘s perfectly fine and recommended to leave
+  # on your system were taken. It's perfectly fine and recommended to leave
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "23.05"; # Did you read the comment?
-
 }
+
